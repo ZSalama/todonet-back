@@ -5,7 +5,12 @@ using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var raw = builder.Configuration.GetConnectionString("DefaultConnection");
+// var raw = builder.Configuration.GetConnectionString("DefaultConnection");
+
+var raw = builder.Configuration.GetConnectionString("DefaultConnection")
+          ?? Environment.GetEnvironmentVariable("PGSQLCONNSTR_DefaultConnection");
+if (raw == null)
+    throw new InvalidOperationException("Connection string not found.");
 
 string connString;
 
