@@ -1,4 +1,44 @@
+using Microsoft.EntityFrameworkCore;
+using todo_back.Data;
+using Npgsql;
+
+
 var builder = WebApplication.CreateBuilder(args);
+
+var raw = builder.Configuration.GetConnectionString("DefaultConnection");
+
+string connString;
+
+if (raw != null)
+{
+    var uri = new Uri(raw);
+    var userInfo = uri.UserInfo.Split(':', 2);
+
+    var npgBuilder = new NpgsqlConnectionStringBuilder
+    {
+        Host = uri.Host,
+        Username = userInfo[0],
+        Password = userInfo.Length > 1 ? userInfo[1] : null,
+        Database = uri.AbsolutePath.TrimStart('/'),
+        SslMode = SslMode.Require,
+    };
+    if (uri.Port > 0)
+    {
+        npgBuilder.Port = uri.Port;
+    }
+
+    connString = npgBuilder.ConnectionString;
+}
+else
+{
+    connString = Environment.GetEnvironmentVariable("DefaultConnection")
+        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+}
+
+
+builder.Services.AddDbContext<TodoBackDbContext>(opt =>
+    opt.UseNpgsql(connString));
+
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -14,28 +54,14 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
+app.MapGet("/weatherforecast", async (TodoBackDbContext db) =>
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
+    var list = await db.Weathers
+        .Select(w => new { w.Day, w.Temperature })
+        .ToListAsync();
+    return Results.Ok(list);
 })
 .WithName("GetWeatherForecast");
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
