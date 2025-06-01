@@ -1,16 +1,26 @@
 using Microsoft.EntityFrameworkCore;
 using todo_back.Data;
 using Npgsql;
+using todo_back.Endpoints;
 
 
 var builder = WebApplication.CreateBuilder(args);
 
-// var raw = builder.Configuration.GetConnectionString("DefaultConnection");
+// Define cors policies
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowLocalAndVercel", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:3000", "https://todo-front-snowy.vercel.app")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 
-var raw = builder.Configuration.GetConnectionString("DefaultConnection")
-          ?? Environment.GetEnvironmentVariable("PGSQLCONNSTR_DefaultConnection");
-if (raw == null)
-    throw new InvalidOperationException("Connection string not found.");
+
+// Configure Entity Framework Core to use PostgreSQL
+var raw = builder.Configuration.GetConnectionString("DefaultConnection");
 
 string connString;
 
@@ -40,18 +50,21 @@ else
         ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 }
 
-
+// Register the DbContext with the connection string
 builder.Services.AddDbContext<TodoBackDbContext>(opt =>
     opt.UseNpgsql(connString));
 
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+// Swagger
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+app.UseCors("AllowLocalAndVercel");
+
+// only use OpenAPI in development mode
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -59,14 +72,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.MapGet("/weatherforecast", async (TodoBackDbContext db) =>
-{
-    var list = await db.Weathers
-        .Select(w => new { w.Day, w.Temperature })
-        .ToListAsync();
-    return Results.Ok(list);
-})
-.WithName("GetWeatherForecast");
+
+// Map the custom endpoints
+app.MapTodoEndpoints();
 
 app.Run();
 

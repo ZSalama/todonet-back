@@ -1,0 +1,11 @@
+# run dev server
+
+dotnet run
+
+# update db schema
+
+dotnet ef migrations add InitialCreate
+
+# migrate db
+
+dotnet ef database update

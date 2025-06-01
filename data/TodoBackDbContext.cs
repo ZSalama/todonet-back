@@ -11,24 +11,32 @@ namespace todo_back.Data
         {
         }
 
-        // DbSet for the Weather table
-        public DbSet<Weather> Weathers { get; set; }
+        // DbSet for the Todo table
+        public DbSet<Todo> Todos { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Fluent API configuration for the Weather entity
-            modelBuilder.Entity<Weather>(entity =>
+            // Fluent API configuration for the Todo entity
+            modelBuilder.Entity<Todo>(entity =>
             {
-                entity.ToTable("weather");         // Map to table name
+                entity.ToTable("todos");         // Map to table name
                 entity.HasKey(e => e.Id);           // Primary key
 
-                entity.Property(e => e.Day);
+                entity.Property(e => e.Title)
+                    .IsRequired()
+                    .HasMaxLength(100); // Title is required and has a max length
 
+                entity.Property(e => e.Category)
+                    .IsRequired()
+                    .HasMaxLength(50); // Category is required and has a max length
 
-                entity.Property(e => e.Temperature);
+                entity.Property(e => e.Description)
+                    .HasMaxLength(500); // Description is optional with a max length
 
+                entity.Property(e => e.DueDate);
+                    
             });
         }
 
